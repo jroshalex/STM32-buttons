@@ -107,7 +107,7 @@ int main(void)
   	uint8_t KEYCODE6;
   } keyboardHID;
 
-  keyboardHID keyboardhid = {0,0,0,0,0,0,0,0};
+  keyboardHID release = {0};
 
   const uint16_t leds[] = {
   	      GPIO_PIN_1,   // white
@@ -123,19 +123,19 @@ int main(void)
 
 
   const uint16_t btns[] = {
-		  GPIO_PIN_2,   // white
-		  GPIO_PIN_3,   // green
-		  GPIO_PIN_4,	// yellow
-		  GPIO_PIN_5,	// red
-		  GPIO_PIN_6	// blue
+		  GPIO_PIN_2,   // white = copy = ctrl + C
+		  GPIO_PIN_3,   // green = paste = ctrl + V
+		  GPIO_PIN_4,	// yellow = "ur gay"
+		  GPIO_PIN_5,	// red = change tab = ALT + TAB
+		  GPIO_PIN_6	// blue = SHIFT
   };
 
-  uint8_t shortcuts[5] = {
-		  0x04,		// white
-		  0x05,		// green
-		  0x1E,		// yellow
-		  0x2C,		// red
-		  0x0D		// blue
+  keyboardHID shortcuts[5] = {
+		  {0x01,0,0x06,0,0,0,0,0},		// white
+		  {0x01,0,0x19,0,0,0,0,0},		// green
+		  {0,0,0x18,0x15,0x0A,0x04,0x1C, 0x2C},		// yellow
+		  {0x04,0,0x2B,0,0,0,0,0},		// red
+		  {0x02,0,0,0,0,0,0,0}		// blue
   };     // HID keyboard report: [mods, reserved, key1..key6]
 
 
@@ -147,27 +147,75 @@ int main(void)
   {
 
 	  // ===================== BUTTON CHECK ===================== //
-	  for (int i = 0; i < 5; i++) {
-	       if (HAL_GPIO_ReadPin(GPIOE, btns[i]) == GPIO_PIN_RESET) {
+	  if (HAL_GPIO_ReadPin(GPIOE, btns[0]) == GPIO_PIN_RESET) {
+	          lastPressTime = HAL_GetTick();           // record time of press
 
-	              lastPressTime = HAL_GetTick();           // record time of press
+	          HAL_GPIO_WritePin(GPIOA, leds[0], GPIO_PIN_SET);
+	          USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[0], sizeof(release));   // send the key
+	          HAL_Delay(50); // must give host time to register press
 
-	              HAL_GPIO_WritePin(GPIOA, leds[i], GPIO_PIN_SET);
-	              keyboardhid.KEYCODE1 = shortcuts[i];
-	              USBD_HID_SendReport(&hUsbDeviceFS, &keyboardhid, sizeof(keyboardhid));   // send the key
+	          // release the key
+	          USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));   // send release
+	          HAL_Delay(150);
 
-                  // must give host time to register pres
-	              HAL_Delay(50);
-
-	              // release key
-	              keyboardhid.KEYCODE1 = 0x00;               // release the key
-	              USBD_HID_SendReport(&hUsbDeviceFS, &keyboardhid, sizeof(keyboardhid));   // send release
-	              HAL_Delay(150);
-
-	              HAL_GPIO_WritePin(GPIOA, leds[i], GPIO_PIN_RESET);
+	          HAL_GPIO_WritePin(GPIOA, leds[0], GPIO_PIN_RESET);
 	          }
-	      }
 
+	  if (HAL_GPIO_ReadPin(GPIOE, btns[2]) == GPIO_PIN_RESET) {
+	  	      lastPressTime = HAL_GetTick();           // record time of press
+
+	  	      HAL_GPIO_WritePin(GPIOA, leds[2], GPIO_PIN_SET);
+	  	      USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[2], sizeof(release));   // send the key
+	  	      HAL_Delay(150); // must give host time to register press
+
+	  	          // release the key
+	  	      USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));   // send release
+	  	      HAL_Delay(150);
+
+	  	      HAL_GPIO_WritePin(GPIOA, leds[2], GPIO_PIN_RESET);
+	  	      }
+
+	  if (HAL_GPIO_ReadPin(GPIOE, btns[1]) == GPIO_PIN_RESET) {
+	  	      lastPressTime = HAL_GetTick();           // record time of press
+
+	  	      HAL_GPIO_WritePin(GPIOA, leds[1], GPIO_PIN_SET);
+	  	      USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[1], sizeof(release));   // send the key
+	  	      HAL_Delay(150); // must give host time to register press
+
+	  	          // release the key
+	  	      USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));   // send release
+	  	      HAL_Delay(150);
+
+	  	      HAL_GPIO_WritePin(GPIOA, leds[1], GPIO_PIN_RESET);
+	  	      }
+
+	  if (HAL_GPIO_ReadPin(GPIOE, btns[3]) == GPIO_PIN_RESET) {
+	  	      lastPressTime = HAL_GetTick();           // record time of press
+
+	  	      HAL_GPIO_WritePin(GPIOA, leds[3], GPIO_PIN_SET);
+	  	      USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[3], sizeof(release));   // send the key
+	  	      HAL_Delay(150); // must give host time to register press
+
+	  	          // release the key
+	  	      USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));   // send release
+	  	      HAL_Delay(150);
+
+	  	      HAL_GPIO_WritePin(GPIOA, leds[3], GPIO_PIN_RESET);
+	  	      }
+
+	  if (HAL_GPIO_ReadPin(GPIOE, btns[4]) == GPIO_PIN_RESET) {
+	  	      lastPressTime = HAL_GetTick();           // record time of press
+
+	  	      HAL_GPIO_WritePin(GPIOA, leds[4], GPIO_PIN_SET);
+	  	      USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[4], sizeof(release));   // send the key
+	  	      HAL_Delay(150); // must give host time to register press
+
+	  	          // release the key
+	  	      USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));   // send release
+	  	      HAL_Delay(150);
+
+	  	      HAL_GPIO_WritePin(GPIOA, leds[4], GPIO_PIN_RESET);
+	  	      }
 
 	  // LOADING...
 
