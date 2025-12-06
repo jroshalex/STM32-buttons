@@ -127,7 +127,7 @@ int main(void)
 		  GPIO_PIN_3,   // green = paste = ctrl + V
 		  GPIO_PIN_4,	// yellow = "ur gay"
 		  GPIO_PIN_5,	// red = change tab = ALT + TAB
-		  GPIO_PIN_6	// blue = SHIFT
+		  GPIO_PIN_6	// blue = print screen
   };
 
   keyboardHID shortcuts[5] = {
@@ -135,7 +135,7 @@ int main(void)
 		  {0x01,0,0x19,0,0,0,0,0},		// green
 		  {0,0,0x18,0x15,0x0A,0x04,0x1C, 0x2C},		// yellow
 		  {0x04,0,0x2B,0,0,0,0,0},		// red
-		  {0x02,0,0,0,0,0,0,0}		// blue
+		  {0,0,0x46,0,0,0,0,0}		// blue
   };     // HID keyboard report: [mods, reserved, key1..key6]
 
 
