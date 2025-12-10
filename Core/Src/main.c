@@ -57,6 +57,12 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+volatile uint8_t btnPressed = 255;   // 0–4 = button index, 255 = none
+volatile uint32_t lastPressTime = 0;
+
+// We use volatile here because variable can be modified by external hardware or interrupts, and you don’t want the compiler to optimize out the read or write
+// variable is accessed both in the main code and in an interrupt handler (ISR) -- interrupt handler modifies the value, and the main loop needs to react to those changes
+// “Hey, this variable can change unexpectedly — it can change in an interrupt! Don’t optimize it away or assume it’s always the same!”
 
 /* USER CODE END 0 */
 
@@ -94,6 +100,26 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
+  // --- Enable EXTI interrupts for PE2..PE6 manually ---
+  // Important: assumes each button pin is EXTI-capable.
+
+  // PE2
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);	// HAL_NVIC_SetPriority(IRQn, preemption, subpriority) --> higher # = lower priority -- 0 = highest priority... idk preemption
+  // ^^^ This determines which interrupt can interrupt another one.
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);	// This unmasks the interrupt in the NVIC so the CPU can receive it -- If you do not call this, EXTI interrupts will NEVER run, even if the pin is configured correctly
+
+  // PE3
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+  // PE4
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+
+  // EXTI9_5 handles pins 5 and 6
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
   extern USBD_HandleTypeDef hUsbDeviceFS;
   typedef struct
   {
@@ -122,13 +148,15 @@ int main(void)
   uint32_t lastPressTime = 0;   // stores time of last button press
 
 
-  const uint16_t btns[] = {
-		  GPIO_PIN_2,   // white = copy = ctrl + C
-		  GPIO_PIN_3,   // green = paste = ctrl + V
-		  GPIO_PIN_4,	// yellow = "ur gay"
-		  GPIO_PIN_5,	// red = change tab = ALT + TAB
-		  GPIO_PIN_6	// blue = print screen
-  };
+// DON'T NEED THIS SHII IN INTERRUPT CODE ANYMORE HAHAHAHHAHAHA-->
+
+//  const uint16_t btns[] = {
+//		  GPIO_PIN_2,   // white = copy = ctrl + C
+//		  GPIO_PIN_3,   // green = paste = ctrl + V
+//		  GPIO_PIN_4,	// yellow = "ur gay"
+//		  GPIO_PIN_5,	// red = change tab = ALT + TAB
+//		  GPIO_PIN_6	// blue = print screen
+//  };
 
   keyboardHID shortcuts[5] = {
 		  {0x01,0,0x06,0,0,0,0,0},		// white
@@ -147,75 +175,22 @@ int main(void)
   {
 
 	  // ===================== BUTTON CHECK ===================== //
-	  if (HAL_GPIO_ReadPin(GPIOE, btns[0]) == GPIO_PIN_RESET) {
-	          lastPressTime = HAL_GetTick();           // record time of press
+	  if (btnPressed != 255)
+	  {
+	      uint8_t id = btnPressed;
+	      btnPressed = 255;
 
-	          HAL_GPIO_WritePin(GPIOA, leds[0], GPIO_PIN_SET);
-	          USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[0], sizeof(release));   // send the key
-	          HAL_Delay(50); // must give host time to register press
+	      HAL_GPIO_WritePin(GPIOA, leds[id], GPIO_PIN_SET);
 
-	          // release the key
-	          USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));   // send release
-	          HAL_Delay(150);
+	      USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[id], sizeof(release));
+	      HAL_Delay(50);
 
-	          HAL_GPIO_WritePin(GPIOA, leds[0], GPIO_PIN_RESET);
-	          }
+	      USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));
+	      HAL_Delay(150);
 
-	  if (HAL_GPIO_ReadPin(GPIOE, btns[2]) == GPIO_PIN_RESET) {
-	  	      lastPressTime = HAL_GetTick();           // record time of press
+	      HAL_GPIO_WritePin(GPIOA, leds[id], GPIO_PIN_RESET);
+	  }
 
-	  	      HAL_GPIO_WritePin(GPIOA, leds[2], GPIO_PIN_SET);
-	  	      USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[2], sizeof(release));   // send the key
-	  	      HAL_Delay(150); // must give host time to register press
-
-	  	          // release the key
-	  	      USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));   // send release
-	  	      HAL_Delay(150);
-
-	  	      HAL_GPIO_WritePin(GPIOA, leds[2], GPIO_PIN_RESET);
-	  	      }
-
-	  if (HAL_GPIO_ReadPin(GPIOE, btns[1]) == GPIO_PIN_RESET) {
-	  	      lastPressTime = HAL_GetTick();           // record time of press
-
-	  	      HAL_GPIO_WritePin(GPIOA, leds[1], GPIO_PIN_SET);
-	  	      USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[1], sizeof(release));   // send the key
-	  	      HAL_Delay(150); // must give host time to register press
-
-	  	          // release the key
-	  	      USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));   // send release
-	  	      HAL_Delay(150);
-
-	  	      HAL_GPIO_WritePin(GPIOA, leds[1], GPIO_PIN_RESET);
-	  	      }
-
-	  if (HAL_GPIO_ReadPin(GPIOE, btns[3]) == GPIO_PIN_RESET) {
-	  	      lastPressTime = HAL_GetTick();           // record time of press
-
-	  	      HAL_GPIO_WritePin(GPIOA, leds[3], GPIO_PIN_SET);
-	  	      USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[3], sizeof(release));   // send the key
-	  	      HAL_Delay(150); // must give host time to register press
-
-	  	          // release the key
-	  	      USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));   // send release
-	  	      HAL_Delay(150);
-
-	  	      HAL_GPIO_WritePin(GPIOA, leds[3], GPIO_PIN_RESET);
-	  	      }
-
-	  if (HAL_GPIO_ReadPin(GPIOE, btns[4]) == GPIO_PIN_RESET) {
-	  	      lastPressTime = HAL_GetTick();           // record time of press
-
-	  	      HAL_GPIO_WritePin(GPIOA, leds[4], GPIO_PIN_SET);
-	  	      USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[4], sizeof(release));   // send the key
-	  	      HAL_Delay(150); // must give host time to register press
-
-	  	          // release the key
-	  	      USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));   // send release
-	  	      HAL_Delay(150);
-
-	  	      HAL_GPIO_WritePin(GPIOA, leds[4], GPIO_PIN_RESET);
-	  	      }
 
 	  // LOADING...
 
@@ -285,6 +260,26 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    static uint32_t lastInterruptTime = 0;
+    uint32_t currentTime = HAL_GetTick();
+
+    // Debounce: ignore interrupts that occur within 200 ms of the last one
+    if (currentTime - lastInterruptTime < 200) {
+        return; // Debounce delay: ignore this interrupt
+    }
+
+    // Map pin → button index
+    if (GPIO_Pin == GPIO_PIN_2) btnPressed = 0;
+    else if (GPIO_Pin == GPIO_PIN_3) btnPressed = 1;
+    else if (GPIO_Pin == GPIO_PIN_4) btnPressed = 2;
+    else if (GPIO_Pin == GPIO_PIN_5) btnPressed = 3;
+    else if (GPIO_Pin == GPIO_PIN_6) btnPressed = 4;
+
+    lastPressTime = currentTime;  // Update last press time
+    lastInterruptTime = currentTime;  // Update the time of this interrupt
+}
 
 /* USER CODE END 4 */
 

@@ -494,8 +494,11 @@ void HAL_GPIO_EXTI_IRQHandler(uint16_t GPIO_Pin)
   /* EXTI line interrupt detected */
   if(__HAL_GPIO_EXTI_GET_IT(GPIO_Pin) != RESET)
   {
-    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_Pin);
+	  //Clear PR (pending register) here >>
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_Pin);	// this clears the interrupt pending flag, indicating that the interrupt has been acknowledged and should no longer be considered "pending".
     HAL_GPIO_EXTI_Callback(GPIO_Pin);
+    // To handle an interrupt for a specific GPIO pin (e.g., when a button is pressed),
+    // you can override the weak callback by implementing your custom version in the user code file
   }
 }
 
@@ -507,7 +510,7 @@ void HAL_GPIO_EXTI_IRQHandler(uint16_t GPIO_Pin)
 __weak void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   /* Prevent unused argument(s) compilation warning */
-  UNUSED(GPIO_Pin);
+  UNUSED(GPIO_Pin);  // The UNUSED(GPIO_Pin) macro prevents compiler warnings if you don’t use the parameter in your default callback.
   /* NOTE: This function Should not be modified, when the callback is needed,
            the HAL_GPIO_EXTI_Callback could be implemented in the user file
    */
