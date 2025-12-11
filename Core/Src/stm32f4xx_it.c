@@ -51,6 +51,29 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void EXTI2_IRQHandler(void)
+{
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);   // Dispatch to HAL
+}
+
+void EXTI3_IRQHandler(void)
+{
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
+}
+
+void EXTI4_IRQHandler(void)
+{
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
+}
+
+void EXTI9_5_IRQHandler(void)
+{
+    // EXTI Line 5
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
+
+    // EXTI Line 6
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6);
+}
 
 /* USER CODE END 0 */
 

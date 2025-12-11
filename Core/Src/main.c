@@ -47,6 +47,13 @@
 
 /* USER CODE BEGIN PV */
 
+volatile uint8_t btnPressed = 255;   // 0–4 = button index, 255 = none
+volatile uint32_t lastInterruptTime = 0;
+
+// We use volatile here because variable can be modified by external hardware or interrupts, and you don’t want the compiler to optimize out the read or write
+// variable is accessed both in the main code and in an interrupt handler (ISR) -- interrupt handler modifies the value, and the main loop needs to react to those changes
+// “Hey, this variable can change unexpectedly — it can change in an interrupt! Don’t optimize it away or assume it’s always the same!”
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,12 +64,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile uint8_t btnPressed = 255;   // 0–4 = button index, 255 = none
-volatile uint32_t lastPressTime = 0;
 
-// We use volatile here because variable can be modified by external hardware or interrupts, and you don’t want the compiler to optimize out the read or write
-// variable is accessed both in the main code and in an interrupt handler (ISR) -- interrupt handler modifies the value, and the main loop needs to react to those changes
-// “Hey, this variable can change unexpectedly — it can change in an interrupt! Don’t optimize it away or assume it’s always the same!”
+
 
 /* USER CODE END 0 */
 
@@ -117,6 +120,7 @@ int main(void)
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
   // EXTI9_5 handles pins 5 and 6
+  // pins PE5 and PE6 cannot have separate IRQ handlers.
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
@@ -145,7 +149,7 @@ int main(void)
 
   int index = 0;
   int direction = 1;  // 1 = forward, -1 = backward
-  uint32_t lastPressTime = 0;   // stores time of last button press
+  uint32_t lastActivityTime  = 0;   // stores time of last button press
 
 
 // DON'T NEED THIS SHII IN INTERRUPT CODE ANYMORE HAHAHAHHAHAHA-->
@@ -173,44 +177,46 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+      uint32_t now = HAL_GetTick();
 
-	  // ===================== BUTTON CHECK ===================== //
-	  if (btnPressed != 255)
-	  {
-	      uint8_t id = btnPressed;
-	      btnPressed = 255;
+      // ===================== PROCESS BUTTON PRESS ===================== //
+      if (btnPressed != 255)
+      {
+          uint8_t id = btnPressed;      // copy
+          btnPressed = 255;             // clear immediately
+          lastActivityTime = now;       // reset loading animation timer
 
-	      HAL_GPIO_WritePin(GPIOA, leds[id], GPIO_PIN_SET);
+          // Turn LED on
+          HAL_GPIO_WritePin(GPIOA, leds[id], GPIO_PIN_SET);
 
-	      USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[id], sizeof(release));
-	      HAL_Delay(50);
+          // Send HID keypress
+          USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&shortcuts[id], sizeof(shortcuts[id]));
 
-	      USBD_HID_SendReport(&hUsbDeviceFS, &release, sizeof(release));
-	      HAL_Delay(150);
+          HAL_Delay(40);  // Key must stay pressed for at least one USB frame
 
-	      HAL_GPIO_WritePin(GPIOA, leds[id], GPIO_PIN_RESET);
-	  }
+          // Send HID release
+          USBD_HID_SendReport(&hUsbDeviceFS, (uint8_t*)&release, sizeof(release));
 
-
-	  // LOADING...
-
-	  if (HAL_GetTick() - lastPressTime > 2000)  // 2000 ms = 2 seconds
-	      {
-	          HAL_GPIO_WritePin(GPIOA, leds[index], GPIO_PIN_SET);
-	          HAL_Delay(150);
-	          HAL_GPIO_WritePin(GPIOA, leds[index], GPIO_PIN_RESET);
-
-	          index += direction;
-
-	          if (index == 5 - 1) direction = -1;
-	          if (index == 0) direction = 1;
-	      }
+          // Turn LED off
+          HAL_GPIO_WritePin(GPIOA, leds[id], GPIO_PIN_RESET);
+      }
 
 
-    /* USER CODE END WHILE */
+      // ===================== LOADING ANIMATION ===================== //
+      if (now - lastActivityTime > 2000)
+      {
+          HAL_GPIO_WritePin(GPIOA, leds[index], GPIO_PIN_SET);
+          HAL_Delay(120);
+          HAL_GPIO_WritePin(GPIOA, leds[index], GPIO_PIN_RESET);
 
-    /* USER CODE BEGIN 3 */
-  }
+          index += direction;
+
+          if (index == 4) direction = -1;
+          if (index == 0) direction = 1;
+      }
+
+     /* USER CODE END WHILE */
+  } /* USER CODE BEGIN 3 */
   /* USER CODE END 3 */
 }
 
@@ -262,23 +268,19 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-    static uint32_t lastInterruptTime = 0;
-    uint32_t currentTime = HAL_GetTick();
+    uint32_t now = HAL_GetTick();
 
-    // Debounce: ignore interrupts that occur within 200 ms of the last one
-    if (currentTime - lastInterruptTime < 200) {
-        return; // Debounce delay: ignore this interrupt
-    }
+    // Debounce — ignore presses under 120 ms apart
+    if (now - lastInterruptTime < 120)
+        return;
 
-    // Map pin → button index
-    if (GPIO_Pin == GPIO_PIN_2) btnPressed = 0;
+    if (GPIO_Pin == GPIO_PIN_2)      btnPressed = 0;
     else if (GPIO_Pin == GPIO_PIN_3) btnPressed = 1;
     else if (GPIO_Pin == GPIO_PIN_4) btnPressed = 2;
     else if (GPIO_Pin == GPIO_PIN_5) btnPressed = 3;
     else if (GPIO_Pin == GPIO_PIN_6) btnPressed = 4;
 
-    lastPressTime = currentTime;  // Update last press time
-    lastInterruptTime = currentTime;  // Update the time of this interrupt
+    lastInterruptTime = now;
 }
 
 /* USER CODE END 4 */
